@@ -41,13 +41,27 @@ python check_results.py predictions/20261120_tickets.csv data/sample.csv
 | 並び予想 | line_id（ライン番号）, line_pos（1=先頭, 2=番手…）。出走表では `narabi` 列に `17/243/586/9` と書いてもよい |
 | 結果 | place, kimarite, agari(上がり), s_flag, b_flag, exacta_pay(2車単), quinella_pay, trifecta_pay, trio_pay |
 
+## データ集め（KEIRIN.JP から）
+
 ```bash
-python fetch_data.py merge data/raw/*.csv --out data/races.csv   # 検証してまとめる
-python fetch_data.py check data/races.csv                         # 期間・列の埋まり具合・並びの有無
+python fetch_data.py fetch 20261101 20261122 --out data/races.csv   # 過去の出走表＋結果を足していく
+python fetch_data.py card 20261124 --out cards/20261124.csv         # 当日・翌日の出走表（並び予想つき）
+python fetch_data.py check data/races.csv                           # 期間・列の埋まり具合・並びの有無
+python fetch_data.py merge data/raw/*.csv --out data/races.csv      # 手元の CSV をまとめる
 ```
 
-取得元（サイトから読む部分）はまだない。`fetch_data.py` の `Source` を1つ書いて `SOURCES` に登録すれば
-`fetch` で動く。
+`keirinjp.py` が KEIRIN.JP の画面の裏で使われている JSON（`/pc/json?type=JSJxxx`）を読む。
+
+- **個人の研究用に限る。** robots.txt はこのページの機械的な読み込みを認めていない。サイトポリシーは私的使用のための
+  複製を認め、第三者から金銭を得ることを禁じている。リクエストは 2 秒以上あける（`keirinjp.MIN_INTERVAL`）。
+- 1 場 1 日でおよそ 28 回（`--no-gear` なら 16 回）、1 分ほど。1 日 8〜10 場なので **1 日分で約 10 分、1 か月で約 5 時間**。
+  1 日ごとに `--out` に保存するので、止めても同じコマンドで続きから回せる。過去日の JSON は `data/raw/keirinjp/` に
+  残すので、二度は読まない。
+- **並び予想は当日のうちしか取れない**（レースが終わった日の分は消える）。過去日の `line_id/line_pos` は空欄になる。
+  並びを貯めるには毎日 `fetch 今日` を回す。`merge` は空欄で上書きしないので、朝に取った並びは夜の取り直しで消えない。
+- 取れない列: `s_flag`（そのレースでスタートを取ったか）は結果に出ないので空欄。
+- 追加の列: `race_name`（開催名）、`laps`（周回数）、`h_count`（ホーム取り回数）、`h_flag`（このレースでHを取ったか）、
+  `note`（補充・追加など）、`result_note`（落車棄権・失格など、着順が空欄の理由）。
 
 ## 特徴量グループ（features.py）
 
@@ -87,6 +101,6 @@ python research.py data/races.csv --extra line:front_score     # 列1本だけ�
 
 ## 次にやること
 
-1. 本物のデータの取得元を決めて `Source` を書く（並び予想が取れるかが一番大事）
+1. 毎日 `fetch` を回して並び予想を貯める（過去分の並びは KEIRIN.JP からは取れない。line グループは貯まってから効く）
 2. 2着・3着を Harville ではなく条件付きモデルにする（BoatRace の all_venue_v2 と同じ考え方: 1着がライン先頭なら番手が2着に来やすい、など）
 3. オッズを取って期待値で買い目を選ぶ（BoatRace の all_venue_v4 と同じ）
