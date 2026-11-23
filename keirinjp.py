@@ -156,7 +156,8 @@ class KeirinJP:
 
     def fetch_day(self, day: dt.date) -> pd.DataFrame:
         kday = day.strftime('%Y%m%d')
-        past = day < dt.date.today()     # 過去日だけ保存する（当日以降は中身が変わる）
+        today = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()   # 日本時間
+        past = day < today               # 過去日だけ保存する（当日以降は中身が変わる）
         ck = (lambda s: f'{kday}/{s}') if past else (lambda s: None)
         top = self.c.get('JSJ057', ck('list'), kday=kday)
         frames = []

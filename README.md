@@ -59,6 +59,9 @@ python fetch_data.py merge data/raw/*.csv --out data/races.csv      # 手元の 
   残すので、二度は読まない。
 - **並び予想は当日のうちしか取れない**（レースが終わった日の分は消える）。過去日の `line_id/line_pos` は空欄になる。
   並びを貯めるには毎日 `fetch 今日` を回す。`merge` は空欄で上書きしないので、朝に取った並びは夜の取り直しで消えない。
+- 毎日の取得は `python daily.py`（日本時間の今日の出走表＋並び予想、昨日の結果を `data/daily/YYYYMMDD.csv` に保存）。
+  毎朝 6:47（日本時間）に自動で回し、ブランチ `claude/keirin-data` にコミットしている。まとめるときは
+  `python fetch_data.py merge data/daily/*.csv --out data/races.csv`。
 - 取れない列: `s_flag`（そのレースでスタートを取ったか）は結果に出ないので空欄。
 - 追加の列: `race_name`（開催名）、`laps`（周回数）、`h_count`（ホーム取り回数）、`h_flag`（このレースでHを取ったか）、
   `note`（補充・追加など）、`result_note`（落車棄権・失格など、着順が空欄の理由）。
