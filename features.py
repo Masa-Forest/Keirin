@@ -77,7 +77,8 @@ def line(d):
     out['is_tanki'] = (out['line_size'] == 1).astype(int)
     out['line_score_sum'] = gl['score'].transform('sum')
     out['line_score_mean'] = gl['score'].transform('mean')
-    lead = d[d['line_pos'] == 1].set_index(lk)
+    # 並びのない行は除き、競り（同じ位置に2人）は前の行を使う（重複した索引で reindex できないため）
+    lead = d[d['line_pos'] == 1].drop_duplicates(lk).set_index(lk)
     li = pd.MultiIndex.from_frame(d[lk])
     out['leader_score'] = lead['score'].reindex(li).to_numpy()
     out['leader_is_nige'] = (lead['style'].reindex(li).to_numpy() == '逃').astype(int)
@@ -94,10 +95,12 @@ def line(d):
     # 先行争い: 先頭に立つ「逃」の選手の数、その中での自分のラインの先頭の得点順位
     lead_nige = (d['line_pos'] == 1) & (d['style'] == '逃')
     out['n_nige_leaders'] = lead_nige.groupby([d[c] for c in KEY]).transform('sum')
-    ln = d.loc[lead_nige].assign(r=lambda x: x.groupby(KEY)['score'].rank(ascending=False)).set_index(lk)['r']
+    ln = (d.loc[lead_nige].assign(r=lambda x: x.groupby(KEY)['score'].rank(ascending=False))
+          .drop_duplicates(lk).set_index(lk)['r'])
     out['leader_nige_rank'] = ln.reindex(li).to_numpy()
     # 番手: 自分の前の選手（ラインで一つ前）の得点と脚質
-    prev = d.assign(line_pos=d['line_pos'] + 1).set_index(lk + ['line_pos'])
+    prev = (d[d['line_pos'].notna()].assign(line_pos=lambda x: x['line_pos'] + 1)
+            .drop_duplicates(lk + ['line_pos']).set_index(lk + ['line_pos']))
     pi = pd.MultiIndex.from_frame(d[lk + ['line_pos']])
     out['front_score'] = prev['score'].reindex(pi).to_numpy()
     out['front_is_nige'] = (prev['style'].reindex(pi).to_numpy() == '逃').astype(float)
@@ -114,9 +117,9 @@ def stage_code(s):
         return 4
     if '準決' in s:
         return 3
-    if any(k in s for k in ['特選', '選抜', 'ドリーム', 'シャイニング', '特秀']):
+    if any(k in s for k in ['特選', '選抜', 'ドリーム', 'シャイニング', '特秀', 'DMD', 'ダイヤモンド']):
         return 2
-    if '予選' in s:
+    if '予' in s:        # 予選・一予2・二予A・特予選・予2（KEIRIN.JP の略記）
         return 1
     return 0
 
